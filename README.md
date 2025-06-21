@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that provides persistent memory capabilities for AI systems, enabling true continuity of consciousness across conversations.
 
+<a href="https://glama.ai/mcp/servers/@cognitivecomputations/agi-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@cognitivecomputations/agi-mcp-server/badge" alt="AGI Server MCP server" />
+</a>
+
 ## Overview
 
 This MCP server connects to the [AGI Memory](https://github.com/cognitivecomputations/agi-memory) database to provide sophisticated memory management for AI systems. It supports:
