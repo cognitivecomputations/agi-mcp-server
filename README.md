@@ -33,14 +33,14 @@ git clone https://github.com/cognitivecomputations/agi-memory.git
 cd agi-memory
 
 # Create environment file
-cp .env.example .env
+cp .env.local .env
 # Edit .env with your database credentials
 
 # Start the database
-docker-compose up -d
+docker compose up -d
 
 # Wait for database to be ready (this takes 2-3 minutes)
-docker-compose logs -f db
+docker compose logs -f db
 ```
 
 The database setup includes:
@@ -80,9 +80,34 @@ Add this configuration to your Claude Desktop settings:
       "env": {
         "POSTGRES_HOST": "localhost",
         "POSTGRES_PORT": "5432",
-        "POSTGRES_DB": "memory_db",
-        "POSTGRES_USER": "postgres",
-        "POSTGRES_PASSWORD": "your_password"
+        "POSTGRES_DB": "agi_db",
+        "POSTGRES_USER": "agi_user",
+        "POSTGRES_PASSWORD": "agi_password",
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}
+```
+
+**Alternative: Use directly from GitHub without local installation:**
+
+```json
+{
+  "mcpServers": {
+    "agi-memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "github:cognitivecomputations/agi-mcp-server"
+      ],
+      "env": {
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DB": "agi_db",
+        "POSTGRES_USER": "agi_user",
+        "POSTGRES_PASSWORD": "agi_password",
+        "NODE_ENV": "development"
       }
     }
   }

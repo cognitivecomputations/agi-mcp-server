@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "agi-memory": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "github:cognitivecomputations/agi-mcp-server"
+      ],
+      "env": {
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DB": "agi_db",
+        "POSTGRES_USER": "agi_user",
+        "POSTGRES_PASSWORD": "agi_password",
+        "NODE_ENV": "development"
+      }
+    }
+  }
+}
