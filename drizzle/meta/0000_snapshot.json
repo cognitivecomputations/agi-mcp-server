@@ -1,0 +1,1698 @@
+{
+  "id": "00000000-0000-0000-0000-000000000000",
+  "prevId": "",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.memories": {
+      "name": "memories",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "type": {
+          "name": "type",
+          "type": "memory_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "memory_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'active'"
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "importance": {
+          "name": "importance",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "access_count": {
+          "name": "access_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "last_accessed": {
+          "name": "last_accessed",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decay_rate": {
+          "name": "decay_rate",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0.01
+        },
+        "relevance_score": {
+          "name": "relevance_score",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "(importance * exp(((- decay_rate) * age_in_days(created_at))))",
+            "type": "stored"
+          }
+        }
+      },
+      "indexes": {
+        "memories_content_idx": {
+          "name": "memories_content_idx",
+          "columns": [
+            {
+              "expression": "content",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "gin_trgm_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
+          "with": {}
+        },
+        "memories_embedding_idx": {
+          "name": "memories_embedding_idx",
+          "columns": [
+            {
+              "expression": "embedding",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "ivfflat",
+          "with": {}
+        },
+        "memories_relevance_score_idx": {
+          "name": "memories_relevance_score_idx",
+          "columns": [
+            {
+              "expression": "relevance_score",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "float8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "where": "(status = 'active'::memory_status)",
+          "with": {}
+        },
+        "memories_status_idx": {
+          "name": "memories_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.working_memory": {
+      "name": "working_memory",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "embedding": {
+          "name": "embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expiry": {
+          "name": "expiry",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.memory_clusters": {
+      "name": "memory_clusters",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "cluster_type": {
+          "name": "cluster_type",
+          "type": "cluster_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "centroid_embedding": {
+          "name": "centroid_embedding",
+          "type": "vector(1536)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emotional_signature": {
+          "name": "emotional_signature",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keywords": {
+          "name": "keywords",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importance_score": {
+          "name": "importance_score",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "coherence_score": {
+          "name": "coherence_score",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_activated": {
+          "name": "last_activated",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activation_count": {
+          "name": "activation_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "worldview_alignment": {
+          "name": "worldview_alignment",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "memory_clusters_centroid_embedding_idx": {
+          "name": "memory_clusters_centroid_embedding_idx",
+          "columns": [
+            {
+              "expression": "centroid_embedding",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "vector_cosine_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "ivfflat",
+          "with": {}
+        },
+        "memory_clusters_cluster_type_importance_score_idx": {
+          "name": "memory_clusters_cluster_type_importance_score_idx",
+          "columns": [
+            {
+              "expression": "cluster_type",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "enum_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "importance_score",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "float8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "memory_clusters_last_activated_idx": {
+          "name": "memory_clusters_last_activated_idx",
+          "columns": [
+            {
+              "expression": "last_activated",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "timestamptz_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.episodic_memories": {
+      "name": "episodic_memories",
+      "schema": "",
+      "columns": {
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "action_taken": {
+          "name": "action_taken",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "context": {
+          "name": "context",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "result": {
+          "name": "result",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emotional_valence": {
+          "name": "emotional_valence",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verification_status": {
+          "name": "verification_status",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_time": {
+          "name": "event_time",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "episodic_memories_memory_id_fkey": {
+          "name": "episodic_memories_memory_id_fkey",
+          "tableFrom": "episodic_memories",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "valid_emotion": {
+          "name": "valid_emotion",
+          "value": "(emotional_valence >= ('-1'::integer)::double precision) AND (emotional_valence <= (1)::double precision)"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.cluster_activation_history": {
+      "name": "cluster_activation_history",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "cluster_id": {
+          "name": "cluster_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activated_at": {
+          "name": "activated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "activation_context": {
+          "name": "activation_context",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activation_strength": {
+          "name": "activation_strength",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "co_activated_clusters": {
+          "name": "co_activated_clusters",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resulting_insights": {
+          "name": "resulting_insights",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cluster_activation_history_cluster_id_fkey": {
+          "name": "cluster_activation_history_cluster_id_fkey",
+          "tableFrom": "cluster_activation_history",
+          "tableTo": "memory_clusters",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "cluster_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.semantic_memories": {
+      "name": "semantic_memories",
+      "schema": "",
+      "columns": {
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_validated": {
+          "name": "last_validated",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_references": {
+          "name": "source_references",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contradictions": {
+          "name": "contradictions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "related_concepts": {
+          "name": "related_concepts",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "semantic_memories_memory_id_fkey": {
+          "name": "semantic_memories_memory_id_fkey",
+          "tableFrom": "semantic_memories",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "valid_confidence": {
+          "name": "valid_confidence",
+          "value": "(confidence >= (0)::double precision) AND (confidence <= (1)::double precision)"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.procedural_memories": {
+      "name": "procedural_memories",
+      "schema": "",
+      "columns": {
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "steps": {
+          "name": "steps",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prerequisites": {
+          "name": "prerequisites",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "success_count": {
+          "name": "success_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "total_attempts": {
+          "name": "total_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "success_rate": {
+          "name": "success_rate",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "\nCASE\n    WHEN (total_attempts > 0) THEN ((success_count)::double precision / (total_attempts)::double precision)\n    ELSE (0)::double precision\nEND",
+            "type": "stored"
+          }
+        },
+        "average_duration": {
+          "name": "average_duration",
+          "type": "interval",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "failure_points": {
+          "name": "failure_points",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "procedural_memories_memory_id_fkey": {
+          "name": "procedural_memories_memory_id_fkey",
+          "tableFrom": "procedural_memories",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.strategic_memories": {
+      "name": "strategic_memories",
+      "schema": "",
+      "columns": {
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "pattern_description": {
+          "name": "pattern_description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "supporting_evidence": {
+          "name": "supporting_evidence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "confidence_score": {
+          "name": "confidence_score",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "success_metrics": {
+          "name": "success_metrics",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "adaptation_history": {
+          "name": "adaptation_history",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "context_applicability": {
+          "name": "context_applicability",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "strategic_memories_memory_id_fkey": {
+          "name": "strategic_memories_memory_id_fkey",
+          "tableFrom": "strategic_memories",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "valid_confidence": {
+          "name": "valid_confidence",
+          "value": "(confidence_score >= (0)::double precision) AND (confidence_score <= (1)::double precision)"
+        }
+      },
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.worldview_primitives": {
+      "name": "worldview_primitives",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "belief": {
+          "name": "belief",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emotional_valence": {
+          "name": "emotional_valence",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stability_score": {
+          "name": "stability_score",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "connected_beliefs": {
+          "name": "connected_beliefs",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "activation_patterns": {
+          "name": "activation_patterns",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_filter_rules": {
+          "name": "memory_filter_rules",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "influence_patterns": {
+          "name": "influence_patterns",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "preferred_clusters": {
+          "name": "preferred_clusters",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.worldview_memory_influences": {
+      "name": "worldview_memory_influences",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "worldview_id": {
+          "name": "worldview_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "influence_type": {
+          "name": "influence_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "strength": {
+          "name": "strength",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "worldview_memory_influences_memory_id_strength_idx": {
+          "name": "worldview_memory_influences_memory_id_strength_idx",
+          "columns": [
+            {
+              "expression": "memory_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "float8_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "strength",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "float8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "worldview_memory_influences_worldview_id_fkey": {
+          "name": "worldview_memory_influences_worldview_id_fkey",
+          "tableFrom": "worldview_memory_influences",
+          "tableTo": "worldview_primitives",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "worldview_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "worldview_memory_influences_memory_id_fkey": {
+          "name": "worldview_memory_influences_memory_id_fkey",
+          "tableFrom": "worldview_memory_influences",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.memory_changes": {
+      "name": "memory_changes",
+      "schema": "",
+      "columns": {
+        "change_id": {
+          "name": "change_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "changed_at": {
+          "name": "changed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "change_type": {
+          "name": "change_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "old_value": {
+          "name": "old_value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "new_value": {
+          "name": "new_value",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "memory_changes_memory_id_fkey": {
+          "name": "memory_changes_memory_id_fkey",
+          "tableFrom": "memory_changes",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.identity_memory_resonance": {
+      "name": "identity_memory_resonance",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "identity_aspect": {
+          "name": "identity_aspect",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "resonance_strength": {
+          "name": "resonance_strength",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "integration_status": {
+          "name": "integration_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "identity_memory_resonance_memory_id_resonance_strength_idx": {
+          "name": "identity_memory_resonance_memory_id_resonance_strength_idx",
+          "columns": [
+            {
+              "expression": "memory_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "float8_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "resonance_strength",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "float8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "identity_memory_resonance_memory_id_fkey": {
+          "name": "identity_memory_resonance_memory_id_fkey",
+          "tableFrom": "identity_memory_resonance",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "identity_memory_resonance_identity_aspect_fkey": {
+          "name": "identity_memory_resonance_identity_aspect_fkey",
+          "tableFrom": "identity_memory_resonance",
+          "tableTo": "identity_model",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "identity_aspect"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.identity_model": {
+      "name": "identity_model",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "self_concept": {
+          "name": "self_concept",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "agency_beliefs": {
+          "name": "agency_beliefs",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "purpose_framework": {
+          "name": "purpose_framework",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "group_identifications": {
+          "name": "group_identifications",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "boundary_definitions": {
+          "name": "boundary_definitions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emotional_baseline": {
+          "name": "emotional_baseline",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "threat_sensitivity": {
+          "name": "threat_sensitivity",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "change_resistance": {
+          "name": "change_resistance",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "core_memory_clusters": {
+          "name": "core_memory_clusters",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.memory_cluster_members": {
+      "name": "memory_cluster_members",
+      "schema": "",
+      "columns": {
+        "cluster_id": {
+          "name": "cluster_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "memory_id": {
+          "name": "memory_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_strength": {
+          "name": "membership_strength",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 1
+        },
+        "added_at": {
+          "name": "added_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "contribution_to_centroid": {
+          "name": "contribution_to_centroid",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "memory_cluster_members_cluster_id_membership_strength_idx": {
+          "name": "memory_cluster_members_cluster_id_membership_strength_idx",
+          "columns": [
+            {
+              "expression": "cluster_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            },
+            {
+              "expression": "membership_strength",
+              "asc": false,
+              "nulls": "first",
+              "opclass": "float8_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "memory_cluster_members_memory_id_idx": {
+          "name": "memory_cluster_members_memory_id_idx",
+          "columns": [
+            {
+              "expression": "memory_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "memory_cluster_members_cluster_id_fkey": {
+          "name": "memory_cluster_members_cluster_id_fkey",
+          "tableFrom": "memory_cluster_members",
+          "tableTo": "memory_clusters",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "cluster_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "memory_cluster_members_memory_id_fkey": {
+          "name": "memory_cluster_members_memory_id_fkey",
+          "tableFrom": "memory_cluster_members",
+          "tableTo": "memories",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "memory_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "memory_cluster_members_pkey": {
+          "name": "memory_cluster_members_pkey",
+          "columns": [
+            "cluster_id",
+            "memory_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    },
+    "public.cluster_relationships": {
+      "name": "cluster_relationships",
+      "schema": "",
+      "columns": {
+        "from_cluster_id": {
+          "name": "from_cluster_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_cluster_id": {
+          "name": "to_cluster_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "relationship_type": {
+          "name": "relationship_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strength": {
+          "name": "strength",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0.5
+        },
+        "discovered_at": {
+          "name": "discovered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "evidence_memories": {
+          "name": "evidence_memories",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "cluster_relationships_from_cluster_id_idx": {
+          "name": "cluster_relationships_from_cluster_id_idx",
+          "columns": [
+            {
+              "expression": "from_cluster_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "cluster_relationships_to_cluster_id_idx": {
+          "name": "cluster_relationships_to_cluster_id_idx",
+          "columns": [
+            {
+              "expression": "to_cluster_id",
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops",
+              "isExpression": false
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "cluster_relationships_from_cluster_id_fkey": {
+          "name": "cluster_relationships_from_cluster_id_fkey",
+          "tableFrom": "cluster_relationships",
+          "tableTo": "memory_clusters",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "from_cluster_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "cluster_relationships_to_cluster_id_fkey": {
+          "name": "cluster_relationships_to_cluster_id_fkey",
+          "tableFrom": "cluster_relationships",
+          "tableTo": "memory_clusters",
+          "schemaTo": "public",
+          "columnsFrom": [
+            "to_cluster_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "cluster_relationships_pkey": {
+          "name": "cluster_relationships_pkey",
+          "columns": [
+            "from_cluster_id",
+            "to_cluster_id",
+            "relationship_type"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {},
+      "policies": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.cluster_type": {
+      "name": "cluster_type",
+      "values": [
+        "theme",
+        "emotion",
+        "temporal",
+        "person",
+        "pattern",
+        "mixed"
+      ],
+      "schema": "public"
+    },
+    "public.memory_status": {
+      "name": "memory_status",
+      "values": [
+        "active",
+        "archived",
+        "invalidated"
+      ],
+      "schema": "public"
+    },
+    "public.memory_type": {
+      "name": "memory_type",
+      "values": [
+        "episodic",
+        "semantic",
+        "procedural",
+        "strategic"
+      ],
+      "schema": "public"
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {
+    "public.memory_health": {
+      "name": "memory_health",
+      "schema": "public",
+      "columns": {
+        "type": {
+          "name": "type",
+          "type": "memory_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_memories": {
+          "name": "total_memories",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avg_importance": {
+          "name": "avg_importance",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avg_access_count": {
+          "name": "avg_access_count",
+          "type": "numeric",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "accessed_last_day": {
+          "name": "accessed_last_day",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "avg_relevance": {
+          "name": "avg_relevance",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "isExisting": false,
+      "definition": "SELECT type, count(*) AS total_memories, avg(importance) AS avg_importance, avg(access_count) AS avg_access_count, count(*) FILTER (WHERE last_accessed > (CURRENT_TIMESTAMP - '1 day'::interval)) AS accessed_last_day, avg(relevance_score) AS avg_relevance FROM memories GROUP BY type",
+      "materialized": false
+    },
+    "public.cluster_insights": {
+      "name": "cluster_insights",
+      "schema": "public",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cluster_type": {
+          "name": "cluster_type",
+          "type": "cluster_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "importance_score": {
+          "name": "importance_score",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "coherence_score": {
+          "name": "coherence_score",
+          "type": "double precision",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory_count": {
+          "name": "memory_count",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_activated": {
+          "name": "last_activated",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "related_clusters": {
+          "name": "related_clusters",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "isExisting": false,
+      "definition": "SELECT mc.id, mc.name, mc.cluster_type, mc.importance_score, mc.coherence_score, count(mcm.memory_id) AS memory_count, mc.last_activated, array_agg(DISTINCT cr.to_cluster_id) AS related_clusters FROM memory_clusters mc LEFT JOIN memory_cluster_members mcm ON mc.id = mcm.cluster_id LEFT JOIN cluster_relationships cr ON mc.id = cr.from_cluster_id GROUP BY mc.id, mc.name, mc.cluster_type, mc.importance_score, mc.coherence_score, mc.last_activated ORDER BY mc.importance_score DESC",
+      "materialized": false
+    },
+    "public.active_themes": {
+      "name": "active_themes",
+      "schema": "public",
+      "columns": {
+        "theme": {
+          "name": "theme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "emotional_signature": {
+          "name": "emotional_signature",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keywords": {
+          "name": "keywords",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recent_activations": {
+          "name": "recent_activations",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "associated_themes": {
+          "name": "associated_themes",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "isExisting": false,
+      "definition": "SELECT mc.name AS theme, mc.emotional_signature, mc.keywords, count(DISTINCT mch.id) AS recent_activations, array_agg(DISTINCT mch.co_activated_clusters) FILTER (WHERE mch.co_activated_clusters IS NOT NULL) AS associated_themes FROM memory_clusters mc JOIN cluster_activation_history mch ON mc.id = mch.cluster_id WHERE mch.activated_at > (CURRENT_TIMESTAMP - '7 days'::interval) GROUP BY mc.id, mc.name, mc.emotional_signature, mc.keywords ORDER BY (count(DISTINCT mch.id)) DESC",
+      "materialized": false
+    }
+  },
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "tables": {
+      "memory_clusters": {
+        "columns": {
+          "keywords": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          }
+        }
+      },
+      "cluster_activation_history": {
+        "columns": {
+          "co_activated_clusters": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "uuid"
+          }
+        }
+      },
+      "semantic_memories": {
+        "columns": {
+          "category": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          },
+          "related_concepts": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "text"
+          }
+        }
+      },
+      "worldview_primitives": {
+        "columns": {
+          "connected_beliefs": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "uuid"
+          },
+          "preferred_clusters": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "uuid"
+          }
+        }
+      },
+      "identity_model": {
+        "columns": {
+          "core_memory_clusters": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "uuid"
+          }
+        }
+      },
+      "cluster_relationships": {
+        "columns": {
+          "evidence_memories": {
+            "isArray": true,
+            "dimensions": 1,
+            "rawType": "uuid"
+          }
+        }
+      },
+      "cluster_insights": {
+        "columns": {
+          "related_clusters": {
+            "isArray": true,
+            "dimensions": 0,
+            "rawType": "uuid"
+          }
+        }
+      },
+      "active_themes": {
+        "columns": {
+          "keywords": {
+            "isArray": true,
+            "dimensions": 0,
+            "rawType": "text"
+          },
+          "associated_themes": {
+            "isArray": true,
+            "dimensions": 0,
+            "rawType": "uuid"
+          }
+        }
+      }
+    }
+  }
+}

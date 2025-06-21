@@ -1,353 +1,15 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import pg from 'pg';
-const { Pool } = pg;
+import { MemoryManager } from './src/memory-manager.js';
 
-// Database connection pool
-const pool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  host: process.env.POSTGRES_HOST || 'localhost',
-  database: process.env.POSTGRES_DB || 'memory_db',
-  password: process.env.POSTGRES_PASSWORD || 'password',
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
-});
-
-// Memory management class
-class MemoryManager {
-  
-  async createMemory(type, content, embedding, importance = 0.0, metadata = {}) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
-      // Insert base memory
-      const memoryResult = await client.query(`
-        INSERT INTO memories (type, content, embedding, importance)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, created_at
-      `, [type, content, `[${embedding.join(',')}]`, importance]);
-      
-      const memoryId = memoryResult.rows[0].id;
-      
-      // Insert type-specific details
-      switch (type) {
-        case 'episodic':
-          await client.query(`
-            INSERT INTO episodic_memories (memory_id, action_taken, context, result, emotional_valence, event_time)
-            VALUES ($1, $2, $3, $4, $5, $6)
-          `, [
-            memoryId, 
-            metadata.action_taken || null,
-            metadata.context || null, 
-            metadata.result || null,
-            metadata.emotional_valence || 0.0,
-            metadata.event_time || new Date()
-          ]);
-          break;
-          
-        case 'semantic':
-          await client.query(`
-            INSERT INTO semantic_memories (memory_id, confidence, category, related_concepts)
-            VALUES ($1, $2, $3, $4)
-          `, [
-            memoryId,
-            metadata.confidence || 0.8,
-            metadata.category || [],
-            metadata.related_concepts || []
-          ]);
-          break;
-          
-        case 'procedural':
-          await client.query(`
-            INSERT INTO procedural_memories (memory_id, steps, prerequisites)
-            VALUES ($1, $2, $3)
-          `, [
-            memoryId,
-            metadata.steps || {},
-            metadata.prerequisites || {}
-          ]);
-          break;
-          
-        case 'strategic':
-          await client.query(`
-            INSERT INTO strategic_memories (memory_id, pattern_description, confidence_score)
-            VALUES ($1, $2, $3)
-          `, [
-            memoryId,
-            metadata.pattern_description || content,
-            metadata.confidence_score || 0.7
-          ]);
-          break;
-      }
-      
-      await client.query('COMMIT');
-      
-      // Auto-assign to clusters
-      await this.assignMemoryToClusters(memoryId);
-      
-      return memoryResult.rows[0];
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async searchMemoriesBySimilarity(queryEmbedding, limit = 10, threshold = 0.7) {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT 
-          m.id, m.type, m.content, m.importance, m.access_count, m.created_at,
-          m.relevance_score,
-          1 - (m.embedding <=> $1) as similarity
-        FROM memories m
-        WHERE m.status = 'active' 
-          AND 1 - (m.embedding <=> $1) >= $2
-        ORDER BY m.embedding <=> $1
-        LIMIT $3
-      `, [`[${queryEmbedding.join(',')}]`, threshold, limit]);
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-
-  async getMemoryById(memoryId) {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT m.*, 
-          CASE m.type
-            WHEN 'episodic' THEN row_to_json(em.*)
-            WHEN 'semantic' THEN row_to_json(sm.*)
-            WHEN 'procedural' THEN row_to_json(pm.*)
-            WHEN 'strategic' THEN row_to_json(stm.*)
-          END as type_specific_data
-        FROM memories m
-        LEFT JOIN episodic_memories em ON m.id = em.memory_id
-        LEFT JOIN semantic_memories sm ON m.id = sm.memory_id  
-        LEFT JOIN procedural_memories pm ON m.id = pm.memory_id
-        LEFT JOIN strategic_memories stm ON m.id = stm.memory_id
-        WHERE m.id = $1
-      `, [memoryId]);
-      
-      return result.rows[0];
-    } finally {
-      client.release();
-    }
-  }
-
-  async accessMemory(memoryId) {
-    const client = await pool.connect();
-    try {
-      await client.query(`
-        UPDATE memories 
-        SET access_count = access_count + 1,
-            last_accessed = CURRENT_TIMESTAMP
-        WHERE id = $1
-      `, [memoryId]);
-      
-      return await this.getMemoryById(memoryId);
-    } finally {
-      client.release();
-    }
-  }
-
-  async createMemoryCluster(name, clusterType, description, keywords = []) {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        INSERT INTO memory_clusters (name, cluster_type, description, keywords)
-        VALUES ($1, $2, $3, $4)
-        RETURNING id, created_at
-      `, [name, clusterType, description, keywords]);
-      
-      return result.rows[0];
-    } finally {
-      client.release();
-    }
-  }
-
-  async getMemoryClusters(limit = 20) {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT 
-          mc.*,
-          count(mcm.memory_id) as memory_count,
-          array_agg(mcm.memory_id) FILTER (WHERE mcm.memory_id IS NOT NULL) as memory_ids
-        FROM memory_clusters mc
-        LEFT JOIN memory_cluster_members mcm ON mc.id = mcm.cluster_id
-        GROUP BY mc.id
-        ORDER BY mc.importance_score DESC, mc.last_activated DESC NULLS LAST
-        LIMIT $1
-      `, [limit]);
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-
-  async getClusterMemories(clusterId, limit = 10) {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT 
-          m.*,
-          mcm.membership_strength
-        FROM memories m
-        JOIN memory_cluster_members mcm ON m.id = mcm.memory_id
-        WHERE mcm.cluster_id = $1 AND m.status = 'active'
-        ORDER BY mcm.membership_strength DESC, m.relevance_score DESC
-        LIMIT $2
-      `, [clusterId, limit]);
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-
-  async assignMemoryToClusters(memoryId) {
-    const client = await pool.connect();
-    try {
-      await client.query('SELECT assign_memory_to_clusters($1)', [memoryId]);
-    } finally {
-      client.release();
-    }
-  }
-
-  async activateCluster(clusterId, context = null) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      
-      // Update cluster activation
-      await client.query(`
-        UPDATE memory_clusters 
-        SET activation_count = activation_count + 1
-        WHERE id = $1
-      `, [clusterId]);
-      
-      // Record activation
-      await client.query(`
-        INSERT INTO cluster_activation_history (cluster_id, activation_context, activation_strength)
-        VALUES ($1, $2, $3)
-      `, [clusterId, context, 1.0]);
-      
-      await client.query('COMMIT');
-      
-      // Return cluster with recent memories
-      return await this.getClusterMemories(clusterId);
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
-  }
-
-  async searchMemoriesByText(query, limit = 10) {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT 
-          m.*,
-          ts_rank(to_tsvector('english', m.content), plainto_tsquery('english', $1)) as text_rank
-        FROM memories m
-        WHERE m.status = 'active' 
-          AND to_tsvector('english', m.content) @@ plainto_tsquery('english', $1)
-        ORDER BY text_rank DESC, m.relevance_score DESC
-        LIMIT $2
-      `, [query, limit]);
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-
-  async getIdentityCore() {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT 
-          im.*,
-          array_agg(mc.name) as core_cluster_names
-        FROM identity_model im
-        LEFT JOIN memory_clusters mc ON mc.id = ANY(im.core_memory_clusters)
-        GROUP BY im.id
-        ORDER BY im.id DESC
-        LIMIT 1
-      `);
-      
-      return result.rows[0];
-    } finally {
-      client.release();
-    }
-  }
-
-  async getWorldviewPrimitives() {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT * FROM worldview_primitives
-        ORDER BY confidence DESC, stability_score DESC
-      `);
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-
-  async getMemoryHealth() {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT * FROM memory_health
-      `);
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-
-  async getActiveThemes(days = 7) {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT 
-          mc.name as theme,
-          mc.emotional_signature,
-          mc.keywords,
-          count(DISTINCT mch.id) as recent_activations,
-          mc.importance_score
-        FROM memory_clusters mc
-        JOIN cluster_activation_history mch ON mc.id = mch.cluster_id
-        WHERE mch.activated_at > CURRENT_TIMESTAMP - INTERVAL '$1 days'
-        GROUP BY mc.id, mc.name, mc.emotional_signature, mc.keywords, mc.importance_score
-        ORDER BY count(DISTINCT mch.id) DESC, mc.importance_score DESC
-      `, [days]);
-      
-      return result.rows;
-    } finally {
-      client.release();
-    }
-  }
-}
-
+// Initialize memory manager
 const memoryManager = new MemoryManager();
 
 // MCP Server setup
@@ -554,6 +216,309 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             }
           }
         }
+      },
+      {
+        name: "create_memory_relationship",
+        description: "Create a relationship between two memories",
+        inputSchema: {
+          type: "object",
+          properties: {
+            from_memory_id: {
+              type: "string",
+              description: "UUID of the source memory"
+            },
+            to_memory_id: {
+              type: "string", 
+              description: "UUID of the target memory"
+            },
+            relationship_type: {
+              type: "string",
+              enum: ["causal", "temporal", "semantic", "emotional", "strategic", "consolidation"],
+              description: "Type of relationship"
+            },
+            properties: {
+              type: "object",
+              description: "Additional properties for the relationship",
+              default: {}
+            }
+          },
+          required: ["from_memory_id", "to_memory_id", "relationship_type"]
+        }
+      },
+      {
+        name: "get_memory_relationships",
+        description: "Get relationships for a specific memory",
+        inputSchema: {
+          type: "object",
+          properties: {
+            memory_id: {
+              type: "string",
+              description: "UUID of the memory"
+            },
+            direction: {
+              type: "string",
+              enum: ["incoming", "outgoing", "both"],
+              description: "Direction of relationships to retrieve",
+              default: "both"
+            },
+            relationship_type: {
+              type: "string",
+              description: "Filter by relationship type (optional)"
+            }
+          },
+          required: ["memory_id"]
+        }
+      },
+      {
+        name: "find_related_memories",
+        description: "Find memories related through graph traversal",
+        inputSchema: {
+          type: "object",
+          properties: {
+            memory_id: {
+              type: "string",
+              description: "UUID of the starting memory"
+            },
+            max_depth: {
+              type: "integer",
+              description: "Maximum depth to traverse",
+              default: 2
+            },
+            min_strength: {
+              type: "number",
+              description: "Minimum relationship strength",
+              default: 0.3
+            }
+          },
+          required: ["memory_id"]
+        }
+      },
+      {
+        name: "consolidate_working_memory",
+        description: "Consolidate multiple working memories into a single semantic memory",
+        inputSchema: {
+          type: "object",
+          properties: {
+            working_memory_ids: {
+              type: "array",
+              items: { type: "string" },
+              description: "Array of working memory UUIDs to consolidate"
+            },
+            consolidated_content: {
+              type: "string",
+              description: "Content for the consolidated memory"
+            },
+            consolidated_embedding: {
+              type: "array",
+              items: { type: "number" },
+              description: "Embedding for the consolidated memory"
+            }
+          },
+          required: ["working_memory_ids", "consolidated_content", "consolidated_embedding"]
+        }
+      },
+      {
+        name: "archive_old_memories",
+        description: "Archive old memories based on age and importance criteria",
+        inputSchema: {
+          type: "object",
+          properties: {
+            days_old: {
+              type: "integer",
+              description: "Minimum age in days for archival",
+              default: 365
+            },
+            importance_threshold: {
+              type: "number",
+              description: "Maximum importance for archival",
+              default: 0.3
+            }
+          }
+        }
+      },
+      {
+        name: "prune_memories",
+        description: "Permanently delete memories based on criteria",
+        inputSchema: {
+          type: "object",
+          properties: {
+            criteria: {
+              type: "object",
+              properties: {
+                max_age: {
+                  type: "integer",
+                  description: "Maximum age in days",
+                  default: 1095
+                },
+                min_importance: {
+                  type: "number",
+                  description: "Minimum importance threshold",
+                  default: 0.1
+                },
+                max_access_count: {
+                  type: "integer",
+                  description: "Maximum access count",
+                  default: 2
+                },
+                status: {
+                  type: "string",
+                  description: "Memory status to prune",
+                  default: "archived"
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        name: "get_cluster_insights",
+        description: "Get detailed analytics for a memory cluster",
+        inputSchema: {
+          type: "object",
+          properties: {
+            cluster_id: {
+              type: "string",
+              description: "UUID of the cluster"
+            }
+          },
+          required: ["cluster_id"]
+        }
+      },
+      {
+        name: "find_similar_clusters",
+        description: "Find clusters similar to a given cluster",
+        inputSchema: {
+          type: "object",
+          properties: {
+            cluster_id: {
+              type: "string",
+              description: "UUID of the reference cluster"
+            },
+            threshold: {
+              type: "number",
+              description: "Minimum similarity threshold",
+              default: 0.7
+            }
+          },
+          required: ["cluster_id"]
+        }
+      },
+      {
+        name: "create_working_memory",
+        description: "Create a temporary working memory with expiration",
+        inputSchema: {
+          type: "object",
+          properties: {
+            content: {
+              type: "string",
+              description: "Content of the working memory"
+            },
+            embedding: {
+              type: "array",
+              items: { type: "number" },
+              description: "Vector embedding for the content"
+            },
+            context: {
+              type: "object",
+              properties: {
+                ttl: {
+                  type: "integer",
+                  description: "Time to live in seconds",
+                  default: 3600
+                }
+              },
+              default: {}
+            }
+          },
+          required: ["content", "embedding"]
+        }
+      },
+      {
+        name: "get_working_memories",
+        description: "Retrieve current working memories",
+        inputSchema: {
+          type: "object",
+          properties: {
+            include_expired: {
+              type: "boolean",
+              description: "Include expired working memories",
+              default: false
+            }
+          }
+        }
+      },
+      {
+        name: "cleanup_expired_working_memory",
+        description: "Clean up expired working memories",
+        inputSchema: {
+          type: "object",
+          properties: {}
+        }
+      },
+      {
+        name: "get_memory_history",
+        description: "Get change history for a specific memory",
+        inputSchema: {
+          type: "object",
+          properties: {
+            memory_id: {
+              type: "string",
+              description: "UUID of the memory"
+            }
+          },
+          required: ["memory_id"]
+        }
+      },
+      {
+        name: "search_memories_advanced",
+        description: "Advanced memory search with multiple criteria",
+        inputSchema: {
+          type: "object",
+          properties: {
+            criteria: {
+              type: "object",
+              properties: {
+                text_query: {
+                  type: "string",
+                  description: "Text search query"
+                },
+                embedding: {
+                  type: "array",
+                  items: { type: "number" },
+                  description: "Vector embedding for similarity search"
+                },
+                memory_types: {
+                  type: "array",
+                  items: { type: "string" },
+                  description: "Filter by memory types",
+                  default: []
+                },
+                importance_range: {
+                  type: "array",
+                  items: { type: "number" },
+                  minItems: 2,
+                  maxItems: 2,
+                  description: "Importance range [min, max]",
+                  default: [0, 1]
+                },
+                date_range: {
+                  type: "object",
+                  properties: {
+                    start: { type: "string", format: "date-time" },
+                    end: { type: "string", format: "date-time" }
+                  },
+                  default: {}
+                },
+                limit: {
+                  type: "integer",
+                  description: "Maximum number of results",
+                  default: 10
+                }
+              }
+            }
+          },
+          required: ["criteria"]
+        }
       }
     ]
   };
@@ -632,6 +597,87 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "get_active_themes":
         const themes = await memoryManager.getActiveThemes(args.days || 7);
         return { content: [{ type: "text", text: JSON.stringify(themes, null, 2) }] };
+
+      case "create_memory_relationship":
+        const relationship = await memoryManager.createMemoryRelationship(
+          args.from_memory_id,
+          args.to_memory_id,
+          args.relationship_type,
+          args.properties || {}
+        );
+        return { content: [{ type: "text", text: JSON.stringify(relationship, null, 2) }] };
+
+      case "get_memory_relationships":
+        const relationships = await memoryManager.getMemoryRelationships(
+          args.memory_id,
+          args.direction || 'both',
+          args.relationship_type || null
+        );
+        return { content: [{ type: "text", text: JSON.stringify(relationships, null, 2) }] };
+
+      case "find_related_memories":
+        const relatedMemories = await memoryManager.findRelatedMemories(
+          args.memory_id,
+          args.max_depth || 2,
+          args.min_strength || 0.3
+        );
+        return { content: [{ type: "text", text: JSON.stringify(relatedMemories, null, 2) }] };
+
+      case "consolidate_working_memory":
+        const consolidatedMemory = await memoryManager.consolidateWorkingMemory(
+          args.working_memory_ids,
+          args.consolidated_content,
+          args.consolidated_embedding
+        );
+        return { content: [{ type: "text", text: JSON.stringify(consolidatedMemory, null, 2) }] };
+
+      case "archive_old_memories":
+        const archivedMemories = await memoryManager.archiveOldMemories(
+          args.days_old || 365,
+          args.importance_threshold || 0.3
+        );
+        return { content: [{ type: "text", text: JSON.stringify(archivedMemories, null, 2) }] };
+
+      case "prune_memories":
+        const prunedMemories = await memoryManager.pruneMemories(args.criteria || {});
+        return { content: [{ type: "text", text: JSON.stringify(prunedMemories, null, 2) }] };
+
+      case "get_cluster_insights":
+        const clusterInsights = await memoryManager.getClusterInsights(args.cluster_id);
+        return { content: [{ type: "text", text: JSON.stringify(clusterInsights, null, 2) }] };
+
+      case "find_similar_clusters":
+        const similarClusters = await memoryManager.findSimilarClusters(
+          args.cluster_id,
+          args.threshold || 0.7
+        );
+        return { content: [{ type: "text", text: JSON.stringify(similarClusters, null, 2) }] };
+
+      case "create_working_memory":
+        const workingMemory = await memoryManager.createWorkingMemory(
+          args.content,
+          args.embedding,
+          args.context || {}
+        );
+        return { content: [{ type: "text", text: JSON.stringify(workingMemory, null, 2) }] };
+
+      case "get_working_memories":
+        const workingMemories = await memoryManager.getWorkingMemories(
+          args.include_expired || false
+        );
+        return { content: [{ type: "text", text: JSON.stringify(workingMemories, null, 2) }] };
+
+      case "cleanup_expired_working_memory":
+        const cleanedMemories = await memoryManager.cleanupExpiredWorkingMemory();
+        return { content: [{ type: "text", text: JSON.stringify(cleanedMemories, null, 2) }] };
+
+      case "get_memory_history":
+        const memoryHistory = await memoryManager.getMemoryHistory(args.memory_id);
+        return { content: [{ type: "text", text: JSON.stringify(memoryHistory, null, 2) }] };
+
+      case "search_memories_advanced":
+        const advancedResults = await memoryManager.searchMemoriesAdvanced(args.criteria);
+        return { content: [{ type: "text", text: JSON.stringify(advancedResults, null, 2) }] };
 
       default:
         throw new Error(`Unknown tool: ${name}`);

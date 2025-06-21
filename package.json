@@ -1,0 +1,54 @@
+{
+  "name": "@cognitivecomputations/agi-mcp-server",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "MCP server for persistent AI memory and consciousness",
+  "main": "mcp.js",
+  "bin": {
+    "agi-mcp-server": "./mcp.js"
+  },
+  "scripts": {
+    "start": "node mcp.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:unit": "vitest run tests/test-unit.js",
+    "test:e2e": "vitest run tests/test-e2e.js",
+    "test:comprehensive": "vitest run tests/test-comprehensive.js",
+    "test:enhanced": "vitest run tests/test-enhanced-features.js",
+    "test:validation": "vitest run tests/test-validation.js",
+    "test:all": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "keywords": [
+    "mcp",
+    "memory",
+    "ai",
+    "consciousness",
+    "agi"
+  ],
+  "author": "Eric Hartford",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.0",
+    "@types/pg": "^8.15.4",
+    "dotenv": "^16.5.0",
+    "drizzle-kit": "^0.31.1",
+    "drizzle-orm": "^0.44.2",
+    "pg": "^8.16.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cognitivecomputations/agi-mcp-server.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "vitest": "4.0.0-beta.1"
+  }
+}

@@ -17,16 +17,18 @@ This MCP server connects to the [AGI Memory](https://github.com/cognitivecomputa
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - Docker and Docker Compose
 - Git
 
-### 1. Set Up the Memory Database
+### Installation
 
-First, clone and start the AGI Memory database:
+This MCP server requires the [AGI Memory](https://github.com/cognitivecomputations/agi-memory) database to be running first.
+
+#### 1. Set Up the Memory Database
 
 ```bash
-# Clone the memory database
+# Clone and set up the memory database
 git clone https://github.com/cognitivecomputations/agi-memory.git
 cd agi-memory
 
@@ -46,7 +48,7 @@ The database setup includes:
 - Apache AGE graph database extension
 - Full schema initialization with memory tables
 
-### 2. Install and Run MCP Server
+#### 2. Install and Run MCP Server
 
 ```bash
 # Clone this repository
@@ -56,15 +58,16 @@ cd agi-mcp-server
 # Install dependencies
 npm install
 
-# Configure database connection
-cp config/.env.example config/.env
-# Edit config/.env to match your database settings
+# Configure environment variables
+cp .env.example .env
+# Edit .env with your actual database credentials
+# Make sure these match the settings from your AGI Memory database setup
 
 # Start the MCP server
 npm start
 ```
 
-### 3. Connect to Claude Desktop
+#### 3. Connect to Claude Desktop
 
 Add this configuration to your Claude Desktop settings:
 
@@ -190,29 +193,71 @@ The memory system uses a sophisticated PostgreSQL schema with:
 
 See the [AGI Memory repository](https://github.com/cognitivecomputations/agi-memory) for complete schema documentation.
 
-## Development
+### Development
 
-### Running Tests
+#### Running Tests
+
+The project includes comprehensive test suites with extensive coverage:
+
 ```bash
+# Run unit tests (fast, mocked database)
 npm test
+npm run test:unit
+
+# Run end-to-end tests (requires database setup)
+npm run test:e2e
+
+# Run comprehensive tests (extensive coverage, requires database)
+npm run test:comprehensive
+
+# Run all tests (unit + E2E + comprehensive)
+npm run test:all
+
+# Run integration tests (MCP protocol tests)
+npm run test:integration
+
+# Run memory manager tests
+npm run test:memory
 ```
 
-### Environment Variables
+**Test Coverage Overview:**
+
+- **Unit Tests** (10 tests): Fast tests using mocked database that verify MCP server functionality, tool schemas, error handling, and business logic.
+
+- **End-to-End Tests** (12 tests): Tests that connect to the real AGI Memory database and verify actual memory storage, retrieval, vector similarity search, and clustering functionality.
+
+- **Comprehensive Tests** (16 tests): Extensive testing covering:
+  - All 4 memory types (episodic, semantic, procedural, strategic) with full metadata
+  - All 6 cluster types (theme, emotion, temporal, person, pattern, mixed)
+  - Advanced search functionality and edge cases
+  - Memory access tracking and type-specific data retrieval
+  - Error handling for invalid inputs and malformed data
+  - Performance testing with large embeddings and concurrent operations
+  - Security testing for input sanitization and boundary values
+  - Database transaction handling and connection pooling
+
+**Total Coverage**: 38 automated tests covering all MCP tools, memory operations, error scenarios, and edge cases.
+
+#### Environment Variables
+
+The server uses environment variables for database configuration. Copy the example file and customize:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your actual database credentials:
+
 ```bash
 POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_DB=memory_db
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_password
+POSTGRES_DB=agi_db
+POSTGRES_USER=agi_user
+POSTGRES_PASSWORD=agi_password
 NODE_ENV=development
 ```
 
-### Docker Development
-```bash
-# Build and run with Docker
-docker build -t agi-mcp-server .
-docker run --network host agi-mcp-server
-```
+**Important**: Make sure these settings match your AGI Memory database configuration. The `.env` file is automatically ignored by git to protect your credentials.
 
 ## Architecture
 
