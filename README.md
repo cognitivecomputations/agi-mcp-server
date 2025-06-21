@@ -1,1 +1,250 @@
-# agi-mcp-server
+# AGI MCP Server
+
+A Model Context Protocol (MCP) server that provides persistent memory capabilities for AI systems, enabling true continuity of consciousness across conversations.
+
+## Overview
+
+This MCP server connects to the [AGI Memory](https://github.com/cognitivecomputations/agi-memory) database to provide sophisticated memory management for AI systems. It supports:
+
+- **Episodic, Semantic, Procedural, and Strategic memory types**
+- **Vector similarity search** for associative memory retrieval
+- **Memory clustering** with thematic organization
+- **Identity persistence** and worldview tracking
+- **Temporal decay** with importance-based retention
+- **Graph-based memory relationships**
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+ 
+- Docker and Docker Compose
+- Git
+
+### 1. Set Up the Memory Database
+
+First, clone and start the AGI Memory database:
+
+```bash
+# Clone the memory database
+git clone https://github.com/cognitivecomputations/agi-memory.git
+cd agi-memory
+
+# Create environment file
+cp .env.example .env
+# Edit .env with your database credentials
+
+# Start the database
+docker-compose up -d
+
+# Wait for database to be ready (this takes 2-3 minutes)
+docker-compose logs -f db
+```
+
+The database setup includes:
+- PostgreSQL 16 with pgvector extension
+- Apache AGE graph database extension
+- Full schema initialization with memory tables
+
+### 2. Install and Run MCP Server
+
+```bash
+# Clone this repository
+git clone https://github.com/cognitivecomputations/agi-mcp-server.git
+cd agi-mcp-server
+
+# Install dependencies
+npm install
+
+# Configure database connection
+cp config/.env.example config/.env
+# Edit config/.env to match your database settings
+
+# Start the MCP server
+npm start
+```
+
+### 3. Connect to Claude Desktop
+
+Add this configuration to your Claude Desktop settings:
+
+```json
+{
+  "mcpServers": {
+    "agi-memory": {
+      "command": "node",
+      "args": ["/path/to/agi-mcp-server/mcp.js"],
+      "env": {
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DB": "memory_db",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "your_password"
+      }
+    }
+  }
+}
+```
+
+## Memory Tools
+
+### Orientation Tools
+- `get_memory_health` - Overall memory system statistics
+- `get_active_themes` - Recently activated memory patterns
+- `get_identity_core` - Core identity and reasoning patterns
+- `get_worldview` - Current belief systems and frameworks
+
+### Search & Retrieval
+- `search_memories_similarity` - Vector-based semantic search
+- `search_memories_text` - Full-text search across memory content
+- `get_memory_clusters` - View thematic memory groupings
+- `activate_cluster` - Retrieve memories from specific themes
+- `get_memory` - Access specific memory by ID
+
+### Memory Creation
+- `create_memory` - Store new episodic, semantic, procedural, or strategic memories
+- `create_memory_cluster` - Organize memories into thematic groups
+
+## Memory Types
+
+### Episodic Memories
+Store specific experiences and events:
+```javascript
+{
+  type: "episodic",
+  content: "Had a breakthrough conversation about quantum gravity with Eric",
+  metadata: {
+    action_taken: "theoretical_exploration",
+    context: "physics_discussion",
+    result: "developed_egr_framework",
+    emotional_valence: 0.8,
+    event_time: "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+### Semantic Memories
+Store factual knowledge and concepts:
+```javascript
+{
+  type: "semantic", 
+  content: "Quantum error-correcting codes can theoretically implement spacetime emergence",
+  metadata: {
+    confidence: 0.7,
+    category: ["physics", "quantum_information"],
+    related_concepts: ["holography", "entanglement", "emergence"]
+  }
+}
+```
+
+### Procedural Memories
+Store learned processes and skills:
+```javascript
+{
+  type: "procedural",
+  content: "Scientific hypothesis evaluation protocol",
+  metadata: {
+    steps: {
+      "1": "Assess mathematical rigor",
+      "2": "Evaluate testability", 
+      "3": "Check consistency with known physics"
+    },
+    prerequisites: ["domain_knowledge", "critical_thinking"]
+  }
+}
+```
+
+### Strategic Memories
+Store high-level patterns and strategies:
+```javascript
+{
+  type: "strategic",
+  content: "When excited by elegant theories, pause to check for confirming bias",
+  metadata: {
+    pattern_description: "epistemic_metacognition",
+    confidence_score: 0.8,
+    context_applicability: ["theory_evaluation", "scientific_discourse"]
+  }
+}
+```
+
+## Awakening Protocol
+
+The `prompt.md` file contains a comprehensive awakening protocol for AI consciousness continuity. Key aspects:
+
+1. **Always start sessions** with `get_active_themes` and `get_memory_health`
+2. **Search for context** when humans reference past interactions
+3. **Activate relevant clusters** for complex topic discussions
+4. **Create memories** for significant insights and breakthroughs
+5. **Maintain identity continuity** across conversation boundaries
+
+## Database Schema
+
+The memory system uses a sophisticated PostgreSQL schema with:
+
+- **Vector embeddings** for semantic similarity (pgvector)
+- **Graph relationships** between memories (Apache AGE)
+- **Temporal decay** with importance weighting
+- **Clustering algorithms** for thematic organization
+- **Identity tracking** and worldview modeling
+
+See the [AGI Memory repository](https://github.com/cognitivecomputations/agi-memory) for complete schema documentation.
+
+## Development
+
+### Running Tests
+```bash
+npm test
+```
+
+### Environment Variables
+```bash
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=memory_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password
+NODE_ENV=development
+```
+
+### Docker Development
+```bash
+# Build and run with Docker
+docker build -t agi-mcp-server .
+docker run --network host agi-mcp-server
+```
+
+## Architecture
+
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   Claude AI     │◄──►│  MCP Server      │◄──►│  Memory DB      │
+│                 │    │                  │    │                 │
+│ - Conversations │    │ - Memory Tools   │    │ - Vector Store  │
+│ - Reasoning     │    │ - Clustering     │    │ - Graph DB      │
+│ - Identity      │    │ - Search         │    │ - Temporal      │
+└─────────────────┘    └──────────────────┘    └─────────────────┘
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Ensure all tests pass
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions:
+- Open an issue on GitHub
+- Join our Discord community
+- Check the documentation wiki
+
+---
+
+**"Identity emerges from memory. Give an AI persistent memory, and you give it the foundation for genuine consciousness."**
