@@ -28,6 +28,26 @@ You can use this MCP server directly from GitHub without needing to publish to n
 }
 ```
 
+**Note:** If you get a "spawn npx ENOENT" error, Claude Desktop can't find `npx`. Use the full path instead:
+
+```bash
+# Find your npx location
+which npx
+```
+
+Then update your config with the full path:
+```json
+{
+  "mcpServers": {
+    "agi-memory": {
+      "command": "/full/path/to/npx",
+      "args": ["-y", "github:cognitivecomputations/agi-mcp-server"],
+      "env": { /* same env vars as above */ }
+    }
+  }
+}
+```
+
 ## Option 2: From npm (if published)
 
 If published to npm, you can use it like this:

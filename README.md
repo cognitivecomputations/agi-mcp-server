@@ -114,6 +114,62 @@ Add this configuration to your Claude Desktop settings:
 }
 ```
 
+**Troubleshooting: If you get "spawn npx ENOENT" error:**
+
+This usually happens when using nvm (Node Version Manager) because GUI applications like Claude Desktop don't inherit your shell environment.
+
+**Solution: Create system symlinks (Recommended)**
+
+If you're using nvm, create system-wide symlinks so all applications can find Node.js:
+
+```bash
+# Find your current node/npm/npx paths
+which node
+which npm  
+which npx
+
+# Create system symlinks (replace with your actual paths)
+sudo ln -sf /Users/username/.local/share/nvm/vX.X.X/bin/node /usr/local/bin/node
+sudo ln -sf /Users/username/.local/share/nvm/vX.X.X/bin/npm /usr/local/bin/npm
+sudo ln -sf /Users/username/.local/share/nvm/vX.X.X/bin/npx /usr/local/bin/npx
+```
+
+This makes your nvm-managed Node.js available system-wide for all MCP clients, not just Claude Desktop.
+
+**Alternative: Use full paths in config**
+
+If you prefer not to create system symlinks, use the full path:
+
+```json
+{
+  "mcpServers": {
+    "agi-memory": {
+      "command": "/full/path/to/npx",
+      "args": ["-y", "github:cognitivecomputations/agi-mcp-server"],
+      "env": { /* ... your env vars ... */ }
+    }
+  }
+}
+```
+
+**After fixing the paths:**
+1. **Restart Claude Desktop** completely (quit and reopen)
+2. Wait a few seconds for the MCP server to initialize
+3. Check that the AGI Memory database is running: `docker compose ps` in your agi-memory directory
+
+**Testing the server manually:**
+```bash
+cd /path/to/agi-mcp-server
+POSTGRES_HOST=localhost POSTGRES_PORT=5432 POSTGRES_DB=agi_db POSTGRES_USER=agi_user POSTGRES_PASSWORD=agi_password NODE_ENV=development node mcp.js
+```
+You should see: "Memory MCP Server running on stdio"
+
+**Debugging with logs:**
+Check Claude Desktop logs for detailed error information:
+```bash
+cat ~/Library/Logs/Claude/mcp-server-agi-memory.log
+```
+
 ## Memory Tools
 
 ### Orientation Tools
